@@ -1,7 +1,6 @@
 node_modules
 reports
 .test-output
-/dist/
 
 # Yarn
 # See https://yarnpkg.com/getting-started/qa#which-files-should-be-gitignored

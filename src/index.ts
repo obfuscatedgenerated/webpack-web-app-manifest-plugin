@@ -41,7 +41,7 @@ function normalizePath(path: string): string {
  * @returns true, if the filename is to be included in the list of web app manifest icons.
  */
 const defaultIsAssetManifestIcon = (fileName: string): boolean =>
-  !!file_name.match(/manifest\/icon_(\d+)x(\d+)-\w*\.(png|jpeg|jpg)$/);
+  !!fileName.match(/manifest\/icon_(\d+)x(\d+)-\w*\.(png|jpeg|jpg)$/);
 
 /**
  * Determines the dimensions of the image described by fileName. By default, files are assumed to
@@ -53,13 +53,13 @@ const defaultIsAssetManifestIcon = (fileName: string): boolean =>
  * @returns an object with width and height keys that describe the size of the image.
  */
 const defaultGetIconSize = (fileName: string): Dimensions => {
-  const match = file_name.match(/manifest\/icon_(\d+)x(\d+)-\w*\.(png|jpeg|jpg)$/);
+  const match = fileName.match(/manifest\/icon_(\d+)x(\d+)-\w*\.(png|jpeg|jpg)$/);
                 const width = match && match[1] && parseInt(match[1], 10)
 
                 if (!width || Number.isNaN(width)) {
                     throw new Error(
                         `Invalid icon width found ${JSON.stringify(width)} in filename ${JSON.stringify(
-                            file_name,
+                            fileName,
                         )}`,
                     );
                 }
@@ -69,7 +69,7 @@ const defaultGetIconSize = (fileName: string): Dimensions => {
                 if (!height || Number.isNaN(height)) {
                     throw new Error(
                         `Invalid icon height found ${JSON.stringify(height)} in filename ${JSON.stringify(
-                            file_name,
+                            fileName,
                         )}`,
                     );
                 }
@@ -87,9 +87,9 @@ const defaultGetIconSize = (fileName: string): Dimensions => {
  * @returns the mime type of the image, as inferred by the file extension.
  */
 const defaultGetIconType = (fileName: string): `image/${string}` => {
-  const match = file_name.match(/manifest\/icon_(\d+)x(\d+)-\w*\.(png|jpeg|jpg)$/);
+  const match = fileName.match(/manifest\/icon_(\d+)x(\d+)-\w*\.(png|jpeg|jpg)$/);
                 if (!match || !match[3]) {
-                    throw new Error(`Invalid icon type found in filename ${JSON.stringify(file_name)}`);
+                    throw new Error(`Invalid icon type found in filename ${JSON.stringify(fileName)}`);
                 }
                 return `image/${match[3].toLowerCase()}`;
 };
@@ -117,7 +117,7 @@ export = class WebAppManifestPlugin {
   name: string;
   content: WebAppManifest;
   destination: string;
-  useDigest: NonNullable<Config['useDigest']>>;
+  useDigest: NonNullable<Config['useDigest']>;
   isAssetManifestIcon: NonNullable<Config['isAssetManifestIcon']>;
   getIconSize: NonNullable<Config['getIconSize']>;
   getIconType: NonNullable<Config['getIconType']>;
