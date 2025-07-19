@@ -34,18 +34,18 @@ function normalizePath(path: string): string {
 /**
  * Determines if the asset is supposed to be included in the list of web app manifest icons. By
  * default, the file will be included if it is of the format
- * manifest/icon_[size]-[descriptor].(png|jpeg|jpg).
+ * manifest/icon_[WxH]-[descriptor].(png|jpeg|jpg).
  *
  * @param fileName The name of a file that is a webpack asset.
  *
  * @returns true, if the filename is to be included in the list of web app manifest icons.
  */
 const defaultIsAssetManifestIcon = (fileName: string): boolean =>
-  !!fileName.match(/manifest\/icon_\d+-\w*\.(png|jpeg|jpg)$/);
+  !!file_name.match(/manifest\/icon_(\d+)x(\d+)-\w*\.(png|jpeg|jpg)$/);
 
 /**
  * Determines the dimensions of the image described by fileName. By default, files are assumed to
- * be square and have the format manifest/icon_[size]-[descriptor].(png|jpeg|jpg). This function
+ * have the format manifest/icon_[WxH]-[descriptor].(png|jpeg|jpg). This function
  * will return whatever is matched in the [size] portion as both the width and height.
  *
  * @param fileName The name of a file that is a webpack asset.
@@ -53,17 +53,28 @@ const defaultIsAssetManifestIcon = (fileName: string): boolean =>
  * @returns an object with width and height keys that describe the size of the image.
  */
 const defaultGetIconSize = (fileName: string): Dimensions => {
-  const match = fileName.match(/manifest\/icon_(\d+)-\w*\.(png|jpeg|jpg)$/);
-  const dimension = match && match[1] && parseInt(match[1], 10);
-  /* istanbul ignore if */
-  if (!dimension || Number.isNaN(dimension)) {
-    throw new Error(
-      `Invalid icon dimension found ${JSON.stringify(dimension)} in filename ${JSON.stringify(
-        fileName,
-      )}`,
-    );
-  }
-  return { width: dimension, height: dimension };
+  const match = file_name.match(/manifest\/icon_(\d+)x(\d+)-\w*\.(png|jpeg|jpg)$/);
+                const width = match && match[1] && parseInt(match[1], 10)
+
+                if (!width || Number.isNaN(width)) {
+                    throw new Error(
+                        `Invalid icon width found ${JSON.stringify(width)} in filename ${JSON.stringify(
+                            file_name,
+                        )}`,
+                    );
+                }
+
+                const height = match[2] && parseInt(match[2], 10);
+
+                if (!height || Number.isNaN(height)) {
+                    throw new Error(
+                        `Invalid icon height found ${JSON.stringify(height)} in filename ${JSON.stringify(
+                            file_name,
+                        )}`,
+                    );
+                }
+
+                return { width, height };
 };
 
 /**
@@ -76,17 +87,11 @@ const defaultGetIconSize = (fileName: string): Dimensions => {
  * @returns the mime type of the image, as inferred by the file extension.
  */
 const defaultGetIconType = (fileName: string): `image/${string}` => {
-  const match = fileName.match(/manifest\/icon_(\d+)-\w*\.(png|jpeg|jpg)$/);
-  const extension = match && match[2];
-  /* istanbul ignore if */
-  if (!extension) {
-    throw new Error(
-      `Invalid icon extension found ${JSON.stringify(extension)} in filename ${JSON.stringify(
-        fileName,
-      )}`,
-    );
-  }
-  return `image/${extension}`;
+  const match = file_name.match(/manifest\/icon_(\d+)x(\d+)-\w*\.(png|jpeg|jpg)$/);
+                if (!match || !match[3]) {
+                    throw new Error(`Invalid icon type found in filename ${JSON.stringify(file_name)}`);
+                }
+                return `image/${match[3].toLowerCase()}`;
 };
 
 interface Config {
@@ -94,6 +99,7 @@ interface Config {
   content: Omit<WebAppManifest, 'icons'>;
   /** An output path where the manifest file should be written. */
   destination: string;
+  useDigest?: boolean;
   /** A function to determine if a webpack asset should be included as an icon in the web app manifest. The function accepts a `filename` parameter and returns true or false. */
   isAssetManifestIcon?: (filename: string) => boolean;
   /** A function to determine the icon size of any asset that passes the check `isAssetManifestIcon()`. The function accepts a `fileName` parameter and returns an object `{ width, height }`. */
@@ -111,6 +117,7 @@ export = class WebAppManifestPlugin {
   name: string;
   content: WebAppManifest;
   destination: string;
+  useDigest: NonNullable<Config['useDigest']>>;
   isAssetManifestIcon: NonNullable<Config['isAssetManifestIcon']>;
   getIconSize: NonNullable<Config['getIconSize']>;
   getIconType: NonNullable<Config['getIconType']>;
@@ -121,6 +128,7 @@ export = class WebAppManifestPlugin {
   constructor({
     content,
     destination,
+    useDigest = true,
     isAssetManifestIcon = defaultIsAssetManifestIcon,
     getIconSize = defaultGetIconSize,
     getIconType = defaultGetIconType,
@@ -130,6 +138,7 @@ export = class WebAppManifestPlugin {
     this.content = content;
 
     this.destination = destination;
+    this.useDigest = useDigest;
 
     this.isAssetManifestIcon = isAssetManifestIcon;
     this.getIconSize = getIconSize;
@@ -183,7 +192,12 @@ export = class WebAppManifestPlugin {
           const normalizedDestination = normalizePath(this.destination);
           const hash = webpack.util.createHash('md4');
           const digest = (hash.update(content).digest('hex') as string).substring(0, 8);
-          const filename = `${normalizedDestination}/manifest-${digest}.json`;
+          let filename = `${normalizedDestination}/`;
+          if (this.useDigest) {
+            filename += `manifest-${digest}.json`;
+          } else {
+            filename += "manifest.json";
+          }
 
           /*
           This adds the app manifest as an asset to Webpack.
